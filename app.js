@@ -366,8 +366,8 @@
 
   async function walletCard() {
     const { balance_cents: balance } = await api("/wallet");
-    const amount = moneyInput("Amount you added", "", "$50", "Add money to Apple Cash first, then record it here. The agent can't do this for you.");
-    const save = el("button", { class: "primary", text: "Record top-up" });
+    const amount = moneyInput("Amount you just added", "", "$20", "Add money to Apple Cash first, then enter only the amount you added, not your new balance. The agent can't do this for you.");
+    const save = el("button", { class: "primary", text: "Add to total" });
     const out = el("p", { class: "small" });
     save.addEventListener("click", async () => {
       const cents = toCents(amount.input.value);
@@ -383,44 +383,14 @@
       }
       save.disabled = false;
     });
-    return el("section", { class: "card" }, el("h2", { text: "Wallet" }),
-      el("p", { class: "muted small", text: `Recorded balance: ${money(balance)}` }),
+    return el("section", { class: "card" }, el("h2", { text: "Apple Cash wallet" }),
+      el("p", { class: "total", text: money(balance) }),
+      el("p", { class: "muted small", text: "Total balance. Read-only: it changes only when you add money below or a charge settles." }),
       amount.field, el("div", { class: "actions" }, save), out);
   }
 
-  async function gmailCard() {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/gmail-connect/status`, { headers: await authHeaders() });
-    const { ready, connected } = await res.json();
-    const results = {
-      connected: "Gmail is connected.",
-      failed: "Gmail didn't connect. Try again.",
-      "wrong-account": "That wasn't your owner email account, so nothing was saved.",
-    };
-    const note = el("p", { class: "small", text: results[params.get("gmail")] || "" });
-    const card = el("section", { class: "card" }, el("h2", { text: "Gmail" }));
-    if (connected) {
-      card.append(el("p", { class: "muted small", text: "Connected, read-only. The agent scans receipts and subscription emails four times a day to find what you pay for." }));
-    } else if (!ready) {
-      card.append(el("p", { class: "muted small", text: "Not set up yet. Your Google sign-in details need to be added first." }));
-    } else {
-      const connect = el("button", { class: "primary", text: "Connect Gmail" });
-      connect.addEventListener("click", async () => {
-        connect.disabled = true;
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/gmail-connect/start`, { headers: await authHeaders() });
-        const out = await r.json();
-        if (out.url) { location.href = out.url; return; }
-        note.textContent = out.reason || "Gmail can't be connected right now.";
-        connect.disabled = false;
-      });
-      card.append(el("p", { class: "muted small", text: "Lets the agent read receipts and subscription emails. It can't send, change or delete anything." }),
-        el("div", { class: "actions" }, connect));
-    }
-    card.append(note);
-    return card;
-  }
-
   async function homeView() {
-    const [{ requests }, ks, setup, wallet, gmail] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), setupCard(), walletCard(), gmailCard().catch(() => null)]);
+    const [{ requests }, ks, setup, wallet] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), setupCard(), walletCard()]);
     const list = el("section", { class: "card" }, el("h2", { text: "Pending" }));
     if (!requests.length) list.append(el("p", { class: "muted", text: "Nothing waiting for you." }));
     for (const r of requests) {
@@ -428,7 +398,7 @@
         el("strong", { text: `${TITLES[r.type]}${r.amount_cents != null ? ` · ${money(r.amount_cents)}` : ""}` }),
         el("div", { class: "muted small", text: `${pretty(r.payload?.summary ?? r.payload?.item_title ?? r.payload?.merchant ?? "")} · expires ${relTime(r.expires_at)}` })));
     }
-    show(...[setup, ...(action === "pause-all" ? [ks, list, wallet, gmail] : [list, wallet, gmail, ks])].filter(Boolean));
+    show(...[setup, ...(action === "pause-all" ? [ks, list, wallet] : [list, wallet, ks])].filter(Boolean));
   }
 
   // ---- boot -----------------------------------------------------------------
