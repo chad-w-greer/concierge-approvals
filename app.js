@@ -361,8 +361,32 @@
       el("div", { class: "actions" }, btn), out);
   }
 
+  async function walletCard() {
+    const { balance_cents: balance } = await api("/wallet");
+    const amount = moneyInput("Amount you added", "", "$50", "Add money to Apple Cash first, then record it here. The agent can't do this for you.");
+    const save = el("button", { class: "primary", text: "Record top-up" });
+    const out = el("p", { class: "small" });
+    save.addEventListener("click", async () => {
+      const cents = toCents(amount.input.value);
+      if (!cents) { out.textContent = "Enter an amount in dollars, like 50 or 12.50."; return; }
+      if (!confirm(`Record a ${money(cents)} top-up?`)) return;
+      save.disabled = true;
+      try {
+        const res = await api("/wallet/top-up", { amount_cents: cents });
+        if (res.ok) return homeView();
+        out.textContent = res.reason;
+      } catch (e) {
+        out.textContent = e.message;
+      }
+      save.disabled = false;
+    });
+    return el("section", { class: "card" }, el("h2", { text: "Wallet" }),
+      el("p", { class: "muted small", text: `Recorded balance: ${money(balance)}` }),
+      amount.field, el("div", { class: "actions" }, save), out);
+  }
+
   async function homeView() {
-    const [{ requests }, ks, setup] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), setupCard()]);
+    const [{ requests }, ks, setup, wallet] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), setupCard(), walletCard()]);
     const list = el("section", { class: "card" }, el("h2", { text: "Pending" }));
     if (!requests.length) list.append(el("p", { class: "muted", text: "Nothing waiting for you." }));
     for (const r of requests) {
@@ -370,7 +394,7 @@
         el("strong", { text: `${TITLES[r.type]}${r.amount_cents != null ? ` · ${money(r.amount_cents)}` : ""}` }),
         el("div", { class: "muted small", text: `${pretty(r.payload?.summary ?? r.payload?.item_title ?? r.payload?.merchant ?? "")} · expires ${relTime(r.expires_at)}` })));
     }
-    show(...[setup, ...(action === "pause-all" ? [ks, list] : [list, ks])].filter(Boolean));
+    show(...[setup, ...(action === "pause-all" ? [ks, list, wallet] : [list, wallet, ks])].filter(Boolean));
   }
 
   // ---- boot -----------------------------------------------------------------
