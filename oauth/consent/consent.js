@@ -15,6 +15,9 @@
     { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true } },
   );
 
+  // Claude's callback for web, desktop and mobile. Nothing else may be allowed from this screen.
+  const CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+
   const app = document.getElementById("app");
   const id = new URLSearchParams(location.search).get("authorization_id");
   const line = (tag, cls, text) => {
@@ -72,6 +75,15 @@
     deny.addEventListener("click", () => decide(false, [allow, deny]));
     const actions = document.createElement("div");
     actions.className = "actions";
+
+    if (data.redirect_uri !== CLAUDE_CALLBACK) {
+      actions.append(deny);
+      return card(
+        line("h2", "", "This isn't Claude"),
+        line("p", "muted small", `An app calling itself ${data.client?.name || "unknown"} tried to connect, but it returns to ${new URL(data.redirect_uri).hostname}, not Claude. It can't be allowed. If you didn't expect this, someone may have sent you a fake link.`),
+        actions,
+      );
+    }
     actions.append(deny, allow);
 
     const list = document.createElement("ul");
