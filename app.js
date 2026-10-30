@@ -24,6 +24,23 @@
   const requestId = params.get("request");
   const action = params.get("action");
 
+  // Supabase reports a failed sign-in link in the URL hash. Read it once, then clear it.
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const LINK_ERRORS = {
+    otp_expired: "That sign-in link has expired or was already used. Request a new one, and open only the newest email.",
+  };
+  const linkError = hash.get("error_code")
+    ? LINK_ERRORS[hash.get("error_code")] || `Sign-in failed: ${hash.get("error_description") || hash.get("error_code")}`
+    : null;
+  if (linkError) history.replaceState(null, "", location.pathname + location.search);
+
+  function sendError(error) {
+    if (error.status === 429 || /rate limit/i.test(error.message)) {
+      return "Too many sign-in emails in the last hour. Wait a while, then try again.";
+    }
+    return `Couldn't send the link: ${error.message}`;
+  }
+
   // ---- tiny DOM helper (text only) ----------------------------------------
   function el(tag, props = {}, ...children) {
     const node = document.createElement(tag);
@@ -73,9 +90,9 @@
       const email = input.value.trim();
       if (!email) return;
       btn.disabled = true;
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: pageUrl(location.search) } });
       btn.disabled = false;
-      note.textContent = error ? `Couldn't send the link: ${error.message}` : "Check your email and open the link on this device.";
+      note.textContent = error ? sendError(error) : `Link sent to ${email}. Open the newest email on this device.`;
     });
     show(el("section", { class: "card" }, el("h2", { text: "Sign in" }),
       el("p", { class: "muted", text: "Approvals require your sign-in." }), input, el("div", { class: "actions" }, btn), note));
@@ -196,7 +213,7 @@
   async function route() {
     const { data } = await sb.auth.getSession();
     signOutBtn.hidden = !data.session;
-    if (!data.session) return signInView();
+    if (!data.session) return signInView(linkError);
     try {
       if (requestId) await requestView(requestId);
       else await homeView();
