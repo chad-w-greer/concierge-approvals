@@ -57,6 +57,7 @@ input, select, textarea {
 }
 .field { display: block; margin-top: 8px; }
 .field input { margin: 2px 0 0; }
+.help { display: block; margin-top: 4px; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 .cap-row { border-top: 1px solid var(--line); padding: 10px 0; }
 .cap-row:first-child { border-top: 0; }

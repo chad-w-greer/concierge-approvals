@@ -130,17 +130,18 @@
     return /^\d+(\.\d{1,2})?$/.test(s) ? Math.round(Number(s) * 100) : NaN;
   }
 
-  function moneyInput(label, value, hint) {
+  function moneyInput(label, value, hint, help) {
     const input = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", "aria-label": label, placeholder: hint || "$" });
     input.value = value ?? "";
-    return { input, field: el("label", { class: "field" }, el("span", { class: "muted small", text: label }), input) };
+    return { input, field: el("label", { class: "field" }, el("span", { class: "small", text: label }), input,
+      help ? el("span", { class: "muted small help", text: help }) : null) };
   }
 
   function capRow(row, list, kind, redraw) {
     const name = el("input", { type: "text", autocomplete: "off", "aria-label": `${kind} name`, placeholder: `${kind} name` });
     name.value = row.name ?? "";
-    const monthly = moneyInput("Monthly", row.monthly, "General cap");
-    const each = moneyInput("Per purchase", row.each, "General cap");
+    const monthly = moneyInput("Monthly limit", row.monthly, "None");
+    const each = moneyInput("Limit per purchase", row.each, "None");
     const remove = el("button", { class: "link", type: "button", text: "Remove" });
     const sync = () => Object.assign(row, { name: name.value, monthly: monthly.input.value, each: each.input.value });
     remove.addEventListener("click", () => { list.forEach((r) => r.sync()); list.splice(list.indexOf(row), 1); redraw(); });
@@ -168,20 +169,20 @@
   function setupView() {
     const draft = readDraft();
     const g = draft.general || {};
-    const monthly = moneyInput("Monthly total", g.monthly, "$400");
-    const each = moneyInput("Per-purchase maximum", g.each, "$150");
-    const threshold = moneyInput("Approval-page threshold", g.threshold, "$75");
-    const retry = moneyInput("Retry cost threshold", g.retry, "$5");
+    const monthly = moneyInput("Monthly limit", g.monthly, "$400", "The most the agent can spend in a calendar month.");
+    const each = moneyInput("Limit per purchase", g.each, "$150", "The most it can spend on any one purchase.");
+    const threshold = moneyInput("Email approval above", g.threshold, "$75", "At or below this amount, you approve in the Claude chat. Above it, you get an email and approve on this page, which Claude can't reach.");
+    const retry = moneyInput("Retry budget per task", g.retry, "$5", "When something fails, the agent tries another way, and those tries can cost a little, such as paid price lookups. Past this amount on one task, it stops and asks you. This isn't money for the item itself.");
     const categories = (draft.categories || STARTER.categories).map((r) => ({ ...r }));
     const vendors = (draft.vendors || STARTER.vendors).map((r) => ({ ...r }));
     const exclusions = el("textarea", { rows: "3", "aria-label": "Subscriptions never to test", placeholder: "One per line" });
     exclusions.value = draft.exclusions ?? "";
-    const balance = moneyInput("Starting wallet balance", draft.balance, "$0");
+    const balance = moneyInput("Apple Cash balance now", draft.balance, "$0", "All the money the agent can reach. It can't spend past this, even if a limit above is higher.");
     const times = { ...STARTER.runTimes, ...draft.runTimes };
     const timeInputs = Object.keys(STARTER.runTimes).map((run) => {
       const input = el("input", { type: "time", "aria-label": `${run} run` });
       input.value = times[run];
-      return { run, input, field: el("label", { class: "field" }, el("span", { class: "muted small", text: run[0].toUpperCase() + run.slice(1) }), input) };
+      return { run, input, field: el("label", { class: "field" }, el("span", { class: "small", text: run[0].toUpperCase() + run.slice(1) }), input) };
     });
     const errorList = el("ul", { class: "errors small" });
     const send = el("button", { class: "primary", text: "Review for approval" });
@@ -218,8 +219,8 @@
         startingBalanceCents: toCents(d.balance) ?? 0,
         runTimes: d.runTimes,
       };
-      const required = [["Monthly total", d.general.monthly], ["Per-purchase maximum", d.general.each],
-        ["Approval-page threshold", d.general.threshold], ["Retry cost threshold", d.general.retry]];
+      const required = [["Monthly limit", d.general.monthly], ["Limit per purchase", d.general.each],
+        ["Email approval above", d.general.threshold], ["Retry budget per task", d.general.retry]];
       const errors = required.filter(([, v]) => toCents(v) === null).map(([k]) => `${k} is required.`);
       const amounts = [...Object.values(d.general), d.balance, ...[...d.categories, ...d.vendors].flatMap((r) => [r.monthly, r.each])];
       if (amounts.some((v) => Number.isNaN(toCents(v)))) errors.push("Amounts must be dollars, like 150 or 12.50.");
@@ -237,20 +238,21 @@
     });
 
     show(
-      el("section", { class: "card" }, el("h2", { text: "1. General caps" }),
-        el("p", { class: "muted small", text: "Required. Above the threshold, purchases are approved here instead of in chat. The retry threshold is what the agent may spend on retries for one task before bringing you in." }),
+      el("section", { class: "card" }, el("h2", { text: "1. Overall limits" }),
+        el("p", { class: "muted small", text: "Required. These apply to everything the agent buys." }),
         monthly.field, each.field, threshold.field, retry.field),
       el("section", { class: "card" }, el("h2", { text: "2. Categories" }),
-        el("p", { class: "muted small", text: "Leave a cap blank to use the general cap. Remove any you don't need." }), capList(categories, "Category")),
+        el("p", { class: "muted small", text: "Optional extra limits for a type of purchase. Leave a box blank and only the overall limits apply. When several limits apply, the lowest one wins. Remove any type you don't need." }), capList(categories, "Category")),
       el("section", { class: "card" }, el("h2", { text: "3. Vendors" }),
-        el("p", { class: "muted small", text: "Trusted and Subscription vendors get a reusable merchant-locked card. Higher-risk vendors, and any vendor not listed, get a single-use card." }), capList(vendors, "Vendor")),
-      el("section", { class: "card" }, el("h2", { text: "4. Retention-test exclusions" }),
-        el("p", { class: "muted small", text: "Subscriptions the agent must never test." }), exclusions),
-      el("section", { class: "card" }, el("h2", { text: "5. Wallet and daily runs" }),
-        el("p", { class: "muted small", text: "Your current Apple Cash balance. Run times are Eastern." }),
-        balance.field, el("div", { class: "pair" }, ...timeInputs.map((t) => t.field))),
+        el("p", { class: "muted small", text: "Stores you know, with optional limits for each. Trusted: one card that works only at that store and is reused. Subscription: the same kind of card, for one recurring charge. Higher-risk: a new one-time card for each purchase. Stores not listed here also get one-time cards." }), capList(vendors, "Vendor")),
+      el("section", { class: "card" }, el("h2", { text: "4. Subscriptions to leave alone" }),
+        el("p", { class: "muted small", text: "A retention test starts cancelling a subscription to see if the company offers a better deal, then stops before the final step. List any the agent should never try this on, one per line." }), exclusions),
+      el("section", { class: "card" }, el("h2", { text: "5. Wallet and daily checks" }),
+        balance.field,
+        el("p", { class: "muted small", text: "The agent checks prices, restocks and new email four times a day, at these Eastern times." }),
+        el("div", { class: "pair" }, ...timeInputs.map((t) => t.field))),
       el("section", { class: "card" }, el("h2", { text: "6. Review" }),
-        el("p", { class: "muted small", text: "Next you'll see the full config and approve it. Approving saves config version 1." }),
+        el("p", { class: "muted small", text: "Next you'll see everything you entered. Nothing takes effect until you approve it." }),
         errorList, el("div", { class: "actions" }, send)),
     );
   }
