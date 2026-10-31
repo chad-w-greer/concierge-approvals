@@ -55,14 +55,6 @@ input, select, textarea {
   width: 100%; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--bg); color: var(--text); margin: 8px 0;
 }
-.total { font-size: 32px; font-weight: 600; margin: 8px 0 0; }
-.field { display: block; margin-top: 8px; }
-.field input { margin: 2px 0 0; }
-.help { display: block; margin-top: 4px; }
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
-.cap-row { border-top: 1px solid var(--line); padding: 10px 0; }
-.cap-row:first-child { border-top: 0; }
-.errors { color: var(--danger); margin: 8px 0 0; padding-left: 18px; }
 a.row { display: block; color: inherit; text-decoration: none; }
 .status-approved { color: var(--ok); }
 .status-rejected, .status-expired, .status-cancelled { color: var(--muted); }
