@@ -1,5 +1,5 @@
-// Consent screen for adding the Concierge connector to Claude. Supabase Auth sends the owner
-// here during sign-in. Client names come from outside, so they are rendered as text.
+// Consent screen for adding the Steward connector to an AI assistant. Supabase Auth sends each
+// family member here during sign-in. Client names come from outside, so they are rendered as text.
 
 (() => {
   "use strict";
@@ -15,8 +15,8 @@
     { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true } },
   );
 
-  // Claude's callback for web, desktop and mobile. Nothing else may be allowed from this screen.
-  const CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+  // Approved assistants' callbacks. Nothing else may be allowed from this screen.
+  const APPROVED_CALLBACKS = ["https://claude.ai/api/mcp/auth_callback"];
 
   const app = document.getElementById("app");
   const id = new URLSearchParams(location.search).get("authorization_id");
@@ -48,7 +48,7 @@
     const actions = document.createElement("div");
     actions.className = "actions";
     actions.append(button);
-    card(line("h2", "", "Sign in"), line("p", "muted", "Sign in to connect Concierge to Claude."), input, actions, note);
+    card(line("h2", "", "Sign in"), line("p", "muted", "Sign in with the email address your invite was sent to."), input, actions, note);
   }
 
   async function decide(approve, buttons) {
@@ -61,7 +61,7 @@
   }
 
   async function start() {
-    if (!id) return fail("This link is missing its details. Start again from Claude.");
+    if (!id) return fail("This link is missing its details. Start again from your AI assistant.");
     const { data: session } = await sb.auth.getSession();
     if (!session.session) return signIn();
 
@@ -76,11 +76,11 @@
     const actions = document.createElement("div");
     actions.className = "actions";
 
-    if (data.redirect_uri !== CLAUDE_CALLBACK) {
+    if (!APPROVED_CALLBACKS.includes(data.redirect_uri)) {
       actions.append(deny);
       return card(
-        line("h2", "", "This isn't Claude"),
-        line("p", "muted small", `An app calling itself ${data.client?.name || "unknown"} tried to connect, but it returns to ${new URL(data.redirect_uri).hostname}, not Claude. It can't be allowed. If you didn't expect this, someone may have sent you a fake link.`),
+        line("h2", "", "This app isn't approved"),
+        line("p", "muted small", `An app calling itself ${data.client?.name || "unknown"} tried to connect, but it returns to ${new URL(data.redirect_uri).hostname}. It can't be allowed. If you didn't expect this, someone may have sent you a fake link.`),
         actions,
       );
     }
@@ -89,17 +89,17 @@
     const list = document.createElement("ul");
     list.className = "small";
     for (const item of [
-      "Read your limits, subscriptions and spending",
-      "Add subscription details from your email",
-      "Ask you to approve purchases and changes",
+      "Read every profile in your household",
+      "Save changes you confirm, if your role allows it",
+      "Suggest gift ideas",
     ]) list.append(line("li", "", item));
 
     card(
       line("h2", "", `Connect ${data.client?.name || "this app"}?`),
-      line("p", "muted small", `It will return to ${new URL(data.redirect_uri).hostname}. Only continue if you started this from Claude.`),
+      line("p", "muted small", `It will return to ${new URL(data.redirect_uri).hostname}. Only continue if you started this from your AI assistant.`),
       line("p", "small", "It will be able to:"),
       list,
-      line("p", "muted small", "It can't approve anything on your approval page, change your limits, or see card numbers."),
+      line("p", "muted small", "Your access can be ended by the household's owner at any time."),
       actions,
     );
   }
