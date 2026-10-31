@@ -15,8 +15,11 @@
     { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true } },
   );
 
-  // Approved assistants' callbacks. Nothing else may be allowed from this screen.
-  const APPROVED_CALLBACKS = ["https://claude.ai/api/mcp/auth_callback"];
+  // Approved assistants' callbacks. Nothing else may be allowed from this screen. ChatGPT gives each
+  // connector its own path, and Supabase Auth still requires the exact address to be registered.
+  const CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+  const CHATGPT_CALLBACK = /^https:\/\/chatgpt\.com\/connector\/oauth\/[A-Za-z0-9_-]+$/;
+  const approvedCallback = (uri) => uri === CLAUDE_CALLBACK || CHATGPT_CALLBACK.test(uri);
 
   const app = document.getElementById("app");
   const id = new URLSearchParams(location.search).get("authorization_id");
@@ -76,7 +79,7 @@
     const actions = document.createElement("div");
     actions.className = "actions";
 
-    if (!APPROVED_CALLBACKS.includes(data.redirect_uri)) {
+    if (!approvedCallback(data.redirect_uri)) {
       actions.append(deny);
       return card(
         line("h2", "", "This app isn't approved"),
