@@ -191,8 +191,38 @@
     return card;
   }
 
+  const SOURCE_LABELS = {
+    connected: "On", waiting_for_key: "Waiting for keys", published: "Watching: API has no search yet",
+    needs_build: "New API found, adding it", no_api: "Watching for an API", unavailable: "Waiting on the retailer",
+  };
+
+  function sourcesCard(sources) {
+    const box = el("section", { class: "card" }, el("h2", { text: "All retailers" }),
+      el("p", { class: "muted small", text: "Checked four times a day. New ones are added automatically, and you get an email if one needs a key." }));
+    for (const s of sources) box.append(el("p", { class: "small", text: `${s.name}: ${SOURCE_LABELS[s.status] || s.status}` }));
+    return box;
+  }
+
+  async function watchesCard() {
+    const { watches } = await api("/watches");
+    const box = el("section", { class: "card" }, el("h2", { text: "Watches" }));
+    if (!watches.length) box.append(el("p", { class: "muted", text: "Nothing being watched. Ask your assistant to watch an item." }));
+    for (const w of watches) {
+      const limit = w.ceiling_cents == null ? "Any price drop or restock" : `Limit $${(w.ceiling_cents / 100).toFixed(2)}`;
+      const row = el("div", { class: "row card" }, el("strong", { text: w.item.title }),
+        el("div", { class: "muted small", text: `${limit} · ${w.state === "active" ? `until ${new Date(w.expires_at).toLocaleDateString()}` : w.state === "triggered" ? "Alert sent" : "Ended"}` }));
+      const act = async (name, verb) => { await api(`/watches/${encodeURIComponent(w.id)}/${verb}`, {}); homeView(); };
+      const actions = el("div", { class: "actions" });
+      if (w.state !== "active") { const renew = el("button", { text: "Renew" }); renew.addEventListener("click", () => act("renew", "renew")); actions.append(renew); }
+      const stop = el("button", { text: "Stop" }); stop.addEventListener("click", () => act("cancel", "cancel")); actions.append(stop);
+      row.append(actions);
+      box.append(row);
+    }
+    return box;
+  }
+
   async function homeView() {
-    const [{ requests }, ks, area, stores] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), areaCard(), storesCard()]);
+    const [{ requests }, ks, area, stores, watching, { sources }] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), areaCard(), storesCard(), watchesCard(), api("/retailers")]);
     const list = el("section", { class: "card" }, el("h2", { text: "Security alerts" }));
     if (!requests.length) list.append(el("p", { class: "muted", text: "Nothing waiting for you." }));
     for (const r of requests) {
@@ -200,7 +230,8 @@
         el("strong", { text: "Security alert" }),
         el("div", { class: "muted small", text: `${pretty(r.payload?.source ?? "")} · expires ${relTime(r.expires_at)}` })));
     }
-    show(...(action === "pause-all" ? [ks, list, area, stores] : [list, area, stores, ks]));
+    const all = sourcesCard(sources);
+    show(...(action === "pause-all" ? [ks, list, watching, area, stores, all] : [list, watching, area, stores, all, ks]));
   }
 
   // ---- boot -----------------------------------------------------------------
