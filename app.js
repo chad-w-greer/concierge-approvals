@@ -152,8 +152,27 @@
       el("div", { class: "actions" }, btn), out);
   }
 
+  async function areaCard() {
+    const { postal_code: zip, region } = await api("/settings");
+    const zipInput = el("input", { type: "text", inputmode: "numeric", maxlength: "5", autocomplete: "postal-code", "aria-label": "ZIP code", placeholder: "ZIP code" });
+    const stateInput = el("input", { type: "text", maxlength: "2", autocomplete: "address-level1", "aria-label": "State", placeholder: "State, like NC" });
+    zipInput.value = zip ?? "";
+    stateInput.value = region ?? "";
+    const save = el("button", { class: "primary", text: "Save" });
+    const out = el("p", { class: "small" });
+    save.addEventListener("click", async () => {
+      save.disabled = true;
+      const res = await api("/settings", { postal_code: zipInput.value.trim(), region: stateInput.value.trim().toUpperCase() });
+      out.textContent = res.ok ? "Saved." : res.reason;
+      save.disabled = false;
+    });
+    return el("section", { class: "card" }, el("h2", { text: "Delivery area" }),
+      el("p", { class: "muted small", text: "Used to estimate tax on your carts. You enter your full address at checkout." }),
+      zipInput, stateInput, el("div", { class: "actions" }, save), out);
+  }
+
   async function homeView() {
-    const [{ requests }, ks] = await Promise.all([api("/requests?status=pending"), killSwitchCard()]);
+    const [{ requests }, ks, area] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), areaCard()]);
     const list = el("section", { class: "card" }, el("h2", { text: "Security alerts" }));
     if (!requests.length) list.append(el("p", { class: "muted", text: "Nothing waiting for you." }));
     for (const r of requests) {
@@ -161,7 +180,7 @@
         el("strong", { text: "Security alert" }),
         el("div", { class: "muted small", text: `${pretty(r.payload?.source ?? "")} · expires ${relTime(r.expires_at)}` })));
     }
-    show(...(action === "pause-all" ? [ks, list] : [list, ks]));
+    show(...(action === "pause-all" ? [ks, list, area] : [list, area, ks]));
   }
 
   // ---- boot -----------------------------------------------------------------
