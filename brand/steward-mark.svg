@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="125 113 650 650" role="img" aria-label="Steward">
+<title>Steward</title>
+<circle cx="450" cy="438" r="313" fill="#C9A45C"/>
+<circle cx="450" cy="438" r="258" fill="#1A2B45"/>
+<circle cx="450" cy="438" r="243" fill="none" stroke="#C9A45C" stroke-width="7"/>
+<circle cx="738.0" cy="438.0" r="14" fill="#1A2B45"/><circle cx="653.6" cy="641.6" r="14" fill="#1A2B45"/><circle cx="450.0" cy="726.0" r="14" fill="#1A2B45"/><circle cx="246.4" cy="641.6" r="14" fill="#1A2B45"/><circle cx="162.0" cy="438.0" r="14" fill="#1A2B45"/><circle cx="246.4" cy="234.4" r="14" fill="#1A2B45"/><circle cx="450.0" cy="150.0" r="14" fill="#1A2B45"/><circle cx="653.6" cy="234.4" r="14" fill="#1A2B45"/>
+<g fill="#C9A45C" stroke="#1A2B45" stroke-width="4"><rect x="207" y="295" width="47" height="75" rx="6"/><rect x="217" y="372" width="28" height="131" rx="3"/><rect x="207" y="505" width="47" height="75" rx="6"/></g>
+<g fill="#C9A45C">
+<path id="w" d="M297 320C322 354 362 374 412 378C424 404 436 438 446 476L348 422C318 404 297 392 297 376Z"/>
+<path d="M603 320C578 354 538 374 488 378C476 404 464 438 454 476L552 422C582 404 603 392 603 376Z"/>
+<path d="M352 460L428 501V531L352 571Z"/><path d="M548 460L472 501V531L548 571Z"/>
+<rect x="433" y="495" width="34" height="42" rx="2"/>
+</g>
+</svg>
