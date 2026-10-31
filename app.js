@@ -171,8 +171,28 @@
       zipInput, stateInput, el("div", { class: "actions" }, save), out);
   }
 
+  async function storesCard() {
+    const { kroger, walmart } = await api("/retailers");
+    const line = (name, on) => el("p", { class: "small", text: `${name}: ${on ? "On" : "Waiting for keys"}` });
+    const card = el("section", { class: "card" }, el("h2", { text: "Stores" }), line("Shopify stores", true), line("Walmart", walmart.available), line("Kroger and Harris Teeter", kroger.available));
+    if (kroger.available) {
+      const out = el("p", { class: "small" });
+      const connect = el("button", { class: "primary", text: kroger.linked ? "Reconnect Harris Teeter account" : "Connect Harris Teeter account" });
+      connect.addEventListener("click", async () => {
+        connect.disabled = true;
+        const res = await api("/kroger/connect", {});
+        if (res.ok && res.url.startsWith("https://api.kroger.com/")) { location.href = res.url; return; }
+        out.textContent = res.reason || "That didn't work.";
+        connect.disabled = false;
+      });
+      card.append(el("p", { class: "muted small", text: kroger.linked ? "Connected. The agent can add items to your cart, but can't remove them or pay." : "Lets the agent add items to your cart. It can't remove them or pay. Without this, you get product links." }),
+        el("div", { class: "actions" }, connect), out);
+    }
+    return card;
+  }
+
   async function homeView() {
-    const [{ requests }, ks, area] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), areaCard()]);
+    const [{ requests }, ks, area, stores] = await Promise.all([api("/requests?status=pending"), killSwitchCard(), areaCard(), storesCard()]);
     const list = el("section", { class: "card" }, el("h2", { text: "Security alerts" }));
     if (!requests.length) list.append(el("p", { class: "muted", text: "Nothing waiting for you." }));
     for (const r of requests) {
@@ -180,7 +200,7 @@
         el("strong", { text: "Security alert" }),
         el("div", { class: "muted small", text: `${pretty(r.payload?.source ?? "")} · expires ${relTime(r.expires_at)}` })));
     }
-    show(...(action === "pause-all" ? [ks, list, area] : [list, area, ks]));
+    show(...(action === "pause-all" ? [ks, list, area, stores] : [list, area, stores, ks]));
   }
 
   // ---- boot -----------------------------------------------------------------
